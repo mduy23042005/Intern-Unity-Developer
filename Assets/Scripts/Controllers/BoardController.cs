@@ -77,7 +77,6 @@ public class BoardController : MonoBehaviour
                 break;
             case GameManager.eStateGame.GAME_OVER:
                 m_gameOver = true;
-                StopHints();
                 break;
         }
     }
@@ -322,6 +321,164 @@ public class BoardController : MonoBehaviour
         FindMatchesAndCollapse();
     }
 
+    public void AutoWin()
+    {
+        if (m_gameOver || IsBusy)
+            return;
+
+        StartCoroutine(AutoWinCoroutine());
+    }
+    private IEnumerator AutoWinCoroutine()
+    {
+        IsBusy = true;
+
+        while (!m_board.IsEmpty())
+        {
+            Cell focusCell = null;
+
+            // tìm ô đầu tiên trên Board còn chứa Item làm gốc
+            for (int i = 0; i < this.transform.childCount; i++)
+            {
+                Cell cell = this.transform.GetChild(i).GetComponent<Cell>();
+
+                if (cell != null && !cell.IsEmpty && cell.Item != null)
+                {
+                    focusCell = cell;
+                }
+            }
+            if (focusCell == null || focusCell.Item == null)
+                break;
+
+            // lấy danh sách tất cả các ô trên Board có chứa Item cùng loại với ô gốc
+            List<Cell> listSameTypeCells = new List<Cell>();
+            for (int i = 0; i < this.transform.childCount; i++)
+            {
+                Cell cell = this.transform.GetChild(i).GetComponent<Cell>();
+
+                if (cell != null && !cell.IsEmpty && cell.Item != null)
+                {
+                    if (cell.Item.IsSameType(focusCell.Item))
+                    {
+                        listSameTypeCells.Add(cell);
+                    }
+                }
+            }
+
+            // chuyển lần lượt các item cùng loại xuống CheckBoard
+            for (int i = 0; i < 3; i++)
+            {
+                Cell boardCell = listSameTypeCells[i];
+                Cell checkCell = GetEmptyCheckBoardCell();
+
+                if (checkCell == null || boardCell.Item == null)
+                    break;
+
+                Item item = boardCell.Item;
+
+                boardCell.Free();
+                checkCell.Assign(item);
+
+                SetSortingLayer(boardCell, checkCell);
+
+                // Thực hiện animation di chuyển
+                item.View.DOMove(checkCell.transform.position, 0.3f);
+
+                yield return new WaitForSeconds(0.15f); // Khoảng thời gian giữa các lần hạ item xuống
+            }
+
+            // 4. Chờ animation hoàn tất và kích hoạt kiểm tra nổ 3 ở CheckBoard
+            yield return new WaitForSeconds(0.15f);
+            yield return StartCoroutine(CheckCheckBoardMatchesCoroutine());
+
+            IsBusy = true;
+        }
+
+        IsBusy = false;
+
+        if (m_board.IsEmpty())
+        {
+            m_gameManager.SetState(GameManager.eStateGame.WIN);
+        }
+    }
+    public void AutoLose()
+    {
+        if (m_gameOver || IsBusy)
+            return;
+
+        StartCoroutine(AutoLoseCoroutine());
+    }
+    private IEnumerator AutoLoseCoroutine()
+    {
+        IsBusy = true;
+
+        while (!m_board.IsEmpty())
+        {
+            Cell focusCell = null;
+
+            // tìm ô đầu tiên trên Board còn chứa Item làm gốc
+            for (int i = 0; i < this.transform.childCount; i++)
+            {
+                Cell cell = this.transform.GetChild(i).GetComponent<Cell>();
+
+                if (cell != null && !cell.IsEmpty && cell.Item != null)
+                {
+                    focusCell = cell;
+                }
+            }
+            if (focusCell == null || focusCell.Item == null)
+                break;
+
+            // lấy danh sách tất cả các ô trên Board có chứa Item cùng loại với ô gốc
+            List<Cell> listDifferentTypeCells = new List<Cell>();
+            for (int i = 0; i < this.transform.childCount; i++)
+            {
+                Cell cell = this.transform.GetChild(i).GetComponent<Cell>();
+
+                if (cell != null && !cell.IsEmpty && cell.Item != null)
+                {
+                    if (!cell.Item.IsSameType(focusCell.Item))
+                    {
+                        listDifferentTypeCells.Add(cell);
+                    }
+                }
+            }
+
+            // chuyển lần lượt các item khác loại xuống CheckBoard
+            for (int i = 0; i < 5; i++)
+            {
+                Cell boardCell = listDifferentTypeCells[i];
+                Cell checkCell = GetEmptyCheckBoardCell();
+
+                if (checkCell == null || boardCell.Item == null)
+                    break;
+
+                Item item = boardCell.Item;
+
+                boardCell.Free();
+                checkCell.Assign(item);
+
+                SetSortingLayer(boardCell, checkCell);
+
+                // Thực hiện animation di chuyển
+                item.View.DOMove(checkCell.transform.position, 0.3f);
+
+                yield return new WaitForSeconds(0.15f); // Khoảng thời gian giữa các lần hạ item xuống
+            }
+
+            // 4. Chờ animation hoàn tất và kích hoạt kiểm tra nổ 3 ở CheckBoard
+            yield return new WaitForSeconds(0.15f);
+            yield return StartCoroutine(CheckCheckBoardMatchesCoroutine());
+
+            IsBusy = true;
+        }
+
+        IsBusy = false;
+
+        if (m_board.IsEmpty())
+        {
+            m_gameManager.SetState(GameManager.eStateGame.WIN);
+        }
+    }
 
     private void SetSortingLayer(Cell cell1, Cell cell2)
     {
