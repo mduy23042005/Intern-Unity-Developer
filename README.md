@@ -1,4 +1,4 @@
-# Task 2
+# Task 2 & Task 3
 
 ### 1. Create `checkBoard`
 
@@ -62,5 +62,6 @@ Replace the drag interaction with click interaction:
 - Move all selected items from the main board to the available cells in `checkBoard`.
 - This allows the system to automatically trigger the corresponding Win or Game Over state.
 
-
+### 7. Add a Time Attack Mode
+- I'm sorry because it has been over 4 hours since I started the test.
 
