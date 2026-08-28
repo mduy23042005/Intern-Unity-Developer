@@ -46,7 +46,9 @@ Replace the drag interaction with click interaction:
 ### 5. Win / Game Over conditions
 
 - Win: The main board becomes empty (`board == null`).
+  ![GameWin](https://github.com/mduy23042005/Intern-Unity-Developer/blob/d770d1cdb31789b842bec7659df0d12b2499f9b3/GameWin.gif)
 - Game Over: `checkBoard` becomes full.
+  ![GameLose](https://github.com/mduy23042005/Intern-Unity-Developer/blob/d770d1cdb31789b842bec7659df0d12b2499f9b3/GameLose.gif)
 
 ### 6. Auto Win / Auto Lose
 
@@ -54,7 +56,9 @@ Replace the drag interaction with click interaction:
 - Iterate through the main board and create a list of cells containing the same item type as the focus cell.
 - The number of selected cells depends on the desired result:
   1. Auto Win: select 3 matching cells.
-  2. Auto Lose: select 5 matching cells.
+  ![GameLose](https://github.com/mduy23042005/Intern-Unity-Developer/blob/d770d1cdb31789b842bec7659df0d12b2499f9b3/GameAutoWin.gif)
+  3. Auto Lose: select 5 matching cells.
+  ![GameLose](https://github.com/mduy23042005/Intern-Unity-Developer/blob/d770d1cdb31789b842bec7659df0d12b2499f9b3/GameAutoLose.gif)
 - Move all selected items from the main board to the available cells in `checkBoard`.
 - This allows the system to automatically trigger the corresponding Win or Game Over state.
 
