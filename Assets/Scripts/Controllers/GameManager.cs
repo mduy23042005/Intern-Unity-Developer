@@ -21,6 +21,7 @@ public class GameManager : MonoBehaviour
         GAME_STARTED,
         PAUSE,
         GAME_OVER,
+        WIN
     }
 
     private eStateGame m_state;
@@ -35,9 +36,8 @@ public class GameManager : MonoBehaviour
         }
     }
 
-
     private GameSettings m_gameSettings;
-
+    private GameSettings m_checkBoardSettings;
 
     private BoardController m_boardController;
 
@@ -50,6 +50,7 @@ public class GameManager : MonoBehaviour
         State = eStateGame.SETUP;
 
         m_gameSettings = Resources.Load<GameSettings>(Constants.GAME_SETTINGS_PATH);
+        m_checkBoardSettings = Resources.Load<GameSettings>(Constants.CHECKBOARD_SETTINGS_PATH);
 
         m_uiMenu = FindObjectOfType<UIMainManager>();
         m_uiMenu.Setup(this);
@@ -84,7 +85,7 @@ public class GameManager : MonoBehaviour
     public void LoadLevel(eLevelMode mode)
     {
         m_boardController = new GameObject("BoardController").AddComponent<BoardController>();
-        m_boardController.StartGame(this, m_gameSettings);
+        m_boardController.StartGame(this, m_gameSettings, m_checkBoardSettings);
 
         if (mode == eLevelMode.MOVES)
         {

@@ -12,6 +12,7 @@ public class BoardController : MonoBehaviour
     public bool IsBusy { get; private set; }
 
     private Board m_board;
+    private Board m_checkBoard;
 
     private GameManager m_gameManager;
 
@@ -22,6 +23,7 @@ public class BoardController : MonoBehaviour
     private Collider2D m_hitCollider;
 
     private GameSettings m_gameSettings;
+    private GameSettings m_checkBoardSettings;
 
     private List<Cell> m_potentialMatch;
 
@@ -31,17 +33,28 @@ public class BoardController : MonoBehaviour
 
     private bool m_gameOver;
 
-    public void StartGame(GameManager gameManager, GameSettings gameSettings)
+    private Transform checkBoardTransform;
+
+    public void StartGame(GameManager gameManager, GameSettings gameSettings, GameSettings checkBoardSettings)
     {
         m_gameManager = gameManager;
 
         m_gameSettings = gameSettings;
+        m_checkBoardSettings = checkBoardSettings;
 
         m_gameManager.StateChangedAction += OnGameStateChange;
 
         m_cam = Camera.main;
 
         m_board = new Board(this.transform, gameSettings);
+
+        checkBoardTransform = new GameObject("CheckBoard").transform;
+        m_checkBoard = new Board(checkBoardTransform, m_checkBoardSettings);
+        for (int i = 0; i < checkBoardTransform.childCount; i++)
+        {
+            Transform child = checkBoardTransform.GetChild(i);
+            child.localPosition += new Vector3(0f, -4f, 0f);
+        }
 
         Fill();
     }
@@ -69,29 +82,45 @@ public class BoardController : MonoBehaviour
         }
     }
 
-
     public void Update()
     {
         if (m_gameOver) return;
         if (IsBusy) return;
 
-        if (!m_hintIsShown)
+        if (m_board.IsEmpty())
         {
-            m_timeAfterFill += Time.deltaTime;
-            if (m_timeAfterFill > m_gameSettings.TimeForHint)
-            {
-                m_timeAfterFill = 0f;
-                ShowHint();
-            }
+            IsBusy = false;
+            m_gameManager.SetState(GameManager.eStateGame.WIN);
+            return;
         }
+
+        Cell c2 = GetEmptyCheckBoardCell();
+        if (c2 == null)
+            m_gameManager.SetState(GameManager.eStateGame.GAME_OVER);
 
         if (Input.GetMouseButtonDown(0))
         {
             var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
             if (hit.collider != null)
             {
-                m_isDragging = true;
-                m_hitCollider = hit.collider;
+                Cell c1 = hit.collider.GetComponent<Cell>();
+
+                if (c1 != null && c1.Item != null && c1.transform.IsChildOf(this.transform))
+                { 
+                    if (c2 != null)
+                    {
+                        IsBusy = true;
+
+                        SetSortingLayer(c1, c2);
+
+                        Item item = c1.Item;
+
+                        c1.Free();
+                        c2.Assign(item);
+
+                        item.View.DOMove(c2.transform.position, 0.3f).OnComplete(() => { StartCoroutine(CheckCheckBoardMatchesCoroutine()); });
+                    }
+                }
             }
         }
 
@@ -99,36 +128,59 @@ public class BoardController : MonoBehaviour
         {
             ResetRayCast();
         }
+    }
 
-        if (Input.GetMouseButton(0) && m_isDragging)
+    private Cell GetEmptyCheckBoardCell()
+    {
+        for (int i = 0; i < checkBoardTransform.childCount; i++)
         {
-            var hit = Physics2D.Raycast(m_cam.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null)
-            {
-                if (m_hitCollider != null && m_hitCollider != hit.collider)
-                {
-                    StopHints();
+            Cell cell = checkBoardTransform.GetChild(i).GetComponent<Cell>();
 
-                    Cell c1 = m_hitCollider.GetComponent<Cell>();
-                    Cell c2 = hit.collider.GetComponent<Cell>();
-                    if (AreItemsNeighbor(c1, c2))
-                    {
-                        IsBusy = true;
-                        SetSortingLayer(c1, c2);
-                        m_board.Swap(c1, c2, () =>
-                        {
-                            FindMatchesAndCollapse(c1, c2);
-                        });
-
-                        ResetRayCast();
-                    }
-                }
-            }
-            else
+            if (cell != null && cell.IsEmpty)
             {
-                ResetRayCast();
+                return cell;
             }
         }
+
+        return null;
+    }
+    private IEnumerator CheckCheckBoardMatchesCoroutine()
+    {
+        while (true)
+        {
+            bool foundMatch = false;
+
+            for (int i = 0; i <= checkBoardTransform.childCount - 3; i++)
+            {
+                Cell cell1 = checkBoardTransform.GetChild(i).GetComponent<Cell>();
+                Cell cell2 = checkBoardTransform.GetChild(i + 1).GetComponent<Cell>();
+                Cell cell3 = checkBoardTransform.GetChild(i + 2).GetComponent<Cell>();
+
+                if (cell1 == null || cell2 == null || cell3 == null)
+                    continue;
+
+                if (cell1.Item == null || cell2.Item == null || cell3.Item == null)
+                    continue;
+
+                if (cell1.Item.IsSameType(cell2.Item) && cell1.Item.IsSameType(cell3.Item))
+                {
+                    cell1.ExplodeItem();
+                    cell2.ExplodeItem();
+                    cell3.ExplodeItem();
+
+                    foundMatch = true;
+
+                    yield return new WaitForSeconds(0.2f);
+
+                    break;
+                }
+            }
+
+            if (!foundMatch)
+                break;
+        }
+
+        IsBusy = false;
     }
 
     private void ResetRayCast()
@@ -181,7 +233,8 @@ public class BoardController : MonoBehaviour
 
         if (matches.Count > 0)
         {
-            CollapseMatches(matches, null);
+            IsBusy = false;
+            return;
         }
         else
         {
@@ -219,6 +272,8 @@ public class BoardController : MonoBehaviour
 
     private void CollapseMatches(List<Cell> matches, Cell cellEnd)
     {
+        IsBusy = true;
+
         for (int i = 0; i < matches.Count; i++)
         {
             matches[i].ExplodeItem();
@@ -277,6 +332,11 @@ public class BoardController : MonoBehaviour
     private bool AreItemsNeighbor(Cell cell1, Cell cell2)
     {
         return cell1.IsNeighbour(cell2);
+    }
+
+    private bool IsEmptyItemCheckBoard(Cell cell2)
+    {
+        return cell2 != null && cell2.IsEmpty && cell2.transform.IsChildOf(checkBoardTransform);
     }
 
     internal void Clear()

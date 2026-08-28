@@ -74,38 +74,52 @@ public class Board
 
     internal void Fill()
     {
+        List<NormalItem.eNormalType> types = new List<NormalItem.eNormalType>();
+
+        // chia nhóm trên tổng số ô
+        int numberOfGroups = (boardSizeX * boardSizeY) / 3;
+
+        // cứ với mỗi nhóm thì sẽ thêm 1 type 3 lần
+        // lúc này types có dạng là aaa bbb ccc ddd eee
+        for (int i = 0; i < numberOfGroups; i++)
+        {
+            NormalItem.eNormalType type = Utils.GetRandomNormalType();
+
+            types.Add(type);
+            types.Add(type);
+            types.Add(type);
+        }
+        
+        // cứ với mỗi 1 types
+        // chọn ngẫu nhiên 1 vị trí nào đó trong bảng và hoán đổi types[i] đang xét với types[randomIndex]
+        for (int i = 0; i < types.Count; i++)
+        {
+            int randomIndex = UnityEngine.Random.Range(i, types.Count);
+
+            NormalItem.eNormalType temp = types[i];
+            types[i] = types[randomIndex];
+            types[randomIndex] = temp;
+        }
+
+        int index = 0;
+
+        // bắt đầu init item cho bảng theo cái types đã xếp
         for (int x = 0; x < boardSizeX; x++)
         {
             for (int y = 0; y < boardSizeY; y++)
             {
                 Cell cell = m_cells[x, y];
+
                 NormalItem item = new NormalItem();
 
-                List<NormalItem.eNormalType> types = new List<NormalItem.eNormalType>();
-                if (cell.NeighbourBottom != null)
-                {
-                    NormalItem nitem = cell.NeighbourBottom.Item as NormalItem;
-                    if (nitem != null)
-                    {
-                        types.Add(nitem.ItemType);
-                    }
-                }
-
-                if (cell.NeighbourLeft != null)
-                {
-                    NormalItem nitem = cell.NeighbourLeft.Item as NormalItem;
-                    if (nitem != null)
-                    {
-                        types.Add(nitem.ItemType);
-                    }
-                }
-
-                item.SetType(Utils.GetRandomNormalTypeExcept(types.ToArray()));
+                item.SetType(types[index]);
                 item.SetView();
                 item.SetViewRoot(m_root);
 
                 cell.Assign(item);
                 cell.ApplyItemPosition(false);
+
+                index++;
             }
         }
     }
@@ -135,6 +149,21 @@ public class Board
         }
     }
 
+    public bool IsEmpty()
+    {
+        for (int x = 0; x < boardSizeX; x++)
+        {
+            for (int y = 0; y < boardSizeY; y++)
+            {
+                if (m_cells[x, y].Item != null)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 
     internal void FillGapsWithNewItems()
     {
@@ -350,7 +379,7 @@ public class Board
         var dir = GetMatchDirection(matches);
 
         var bonus = matches.Where(x => x.Item is BonusItem).FirstOrDefault();
-        if(bonus == null)
+        if (bonus == null)
         {
             return matches;
         }

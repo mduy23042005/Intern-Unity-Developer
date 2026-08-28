@@ -41,7 +41,8 @@ public class Cell : MonoBehaviour
     public void Assign(Item item)
     {
         Item = item;
-        Item.SetCell(this);
+        if (Item != null)
+            Item.SetCell(this);
     }
 
     public void ApplyItemPosition(bool withAppearAnimation)
